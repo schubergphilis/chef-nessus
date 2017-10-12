@@ -18,31 +18,31 @@
 #
 
 # Activate! subscription
-bash "activate_nessus" do
+bash 'activate_nessus' do
   code <<-EOH
-    ( /opt/nessus/bin/nessus-fetch --register #{node.nessus.activation_code} && touch /opt/nessus/activated_by_chef ) || uptime
+    ( /opt/nessus/sbin/nessuscli fetch --register #{node.nessus.activation_code} && touch /opt/nessus/activated_by_chef ) || uptime
   EOH
   action :nothing
 end
-log "Nessus: Activating and updating plugins.. this can take a while" do
-  notifies :run, "bash[activate_nessus]", :immediately
-  only_if { !File.exists?('/opt/nessus/activated_by_chef') && !node.nessus.activation_code.nil? }
+log 'Nessus: Activating and updating plugins.. this can take a while' do
+  notifies :run, 'bash[activate_nessus]', :immediately
+  only_if { !File.exist?('/opt/nessus/activated_by_chef') && !node.nessus.activation_code.nil? }
 end
 
 # Notify if activation failed
-log "Nessus: Activation FAILED" do
+log 'Nessus: Activation FAILED' do
   level :warn
-  only_if { !File.exists?('/opt/nessus/activated_by_chef') }
+  only_if { !File.exist?('/opt/nessus/activated_by_chef') }
 end
 
 # Update plugins
-bash "update_nessus_plugins" do
+bash 'update_nessus_plugins' do
   code <<-EOH
-  /opt/nessus/sbin/nessus-update-plugins
+  /opt/nessus/sbin/nessuscli update --plugins-only
   EOH
   action :nothing
 end
-log "Nessus: Updating Plugins" do
-  notifies :run, "bash[update_nessus_plugins]", :immediately
-  only_if { File.exists?('/opt/nessus/activated_by_chef') }
+log 'Nessus: Updating Plugins' do
+  notifies :run, 'bash[update_nessus_plugins]', :immediately
+  only_if { File.exist?('/opt/nessus/activated_by_chef') }
 end

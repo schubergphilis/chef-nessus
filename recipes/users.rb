@@ -2,34 +2,36 @@ include_recipe 'chef-vault'
 
 package 'expect'
 
-users = chef_vault_item(node['nessus']['vault'],node['nessus']['vault_users_item']).dup
-users.delete("id") # remove the id key/val
+users = chef_vault_item(node['nessus']['vault'], node['nessus']['vault_users_item']).dup
+users.delete('id') # remove the id key/val
 
-users.each_pair do |user,password|
+users.each_pair do |user, password|
   log "#{user} - #{password}"
 
   bash "nessus_add_user_#{user}" do
-    user "root"
+    user 'root'
+    not_if "/opt/nessus/sbin/nessuscli lsuser|grep #{user}"
     code <<-EOF
-      /usr/bin/expect -c 'spawn /opt/nessus/sbin/nessus-adduser
-      expect "Login : "
-      send "#{user}\r"
-
-      expect "Login password : "
-      send "#{password}\r"
-      expect "Login password (again) : "
-      send "#{password}\r"
-
-      expect "Do you want"
-      send "y\r"
-
-      sleep 5
-      send "\r"
-
-      expect "Is that ok "
-      send "y\r"
-
-      expect eof'
+    USER=$(/usr/bin/expect << 'END'
+    spawn /opt/nessus/sbin/nessuscli adduser #{user}
+    expect {
+    "Login password:" {send "#{password}\n"}
+    }
+    expect  {
+    "Login password (again):" {send "#{password}\n"}
+    }
+    expect {
+    "*(can upload plugins, etc.)? (y/n)*" {send "y\n"}
+    }
+    expect {
+    "*(the user can have an empty rules set)" {send "\n"}
+    }
+    expect {
+    "Is that ok*" {send "y\n"}
+    }
+    expect eof
+    END
+    )
     EOF
   end
 end
